@@ -1,0 +1,140 @@
+Buffer overflow — learning objectives
+What is a buffer?
+
+A contiguous block of memory used to hold data (e.g., a char[64] array for input). Buffers live on the stack (automatic storage) or the heap (dynamic storage via malloc/new).
+
+What is Buffer Overflow?
+
+Writing more data than a buffer can hold, which overwrites adjacent memory. Because memory regions can hold control data (return addresses, function pointers, heap metadata), overflow can corrupt control flow or data.
+
+What is a Buffer Overflow Attack?
+
+An attacker supplies crafted input that triggers an overflow to change program behavior—from crashing (DoS) to running attacker-chosen code or escalating privileges.
+
+What causes buffer overflow attacks?
+
+Missing bounds checks on inputs (classic C/C++)
+
+Use of unsafe APIs: gets, strcpy/strcat, sprintf, scanf("%s"), strncpy misused, etc.
+
+Off-by-one errors, integer overflows/underflows in size calculations
+
+Assuming null-termination or fixed sizes that don’t match reality
+
+Complex parsing, custom protocols, hand-rolled serialization
+
+How do attackers orchestrate buffer overflow attacks? (high level)
+
+Find input surface (file, socket, env var, argv).
+
+Map the memory layout (stack frame size, heap allocations).
+
+Craft payload to overwrite adjacent data (e.g., return address, vtable, function pointer) or corrupt heap metadata.
+
+Bypass mitigations (layout randomization, non-exec memory) using techniques like ROP/JOP or info leaks.
+Note: This is a conceptual overview—no exploit steps.
+
+Types of buffer overflow attacks
+
+Stack-based overflow: Overwrites stack frames (locals, saved return address).
+
+Heap-based overflow: Overwrites heap objects/metadata, leading to pointer hijack or allocator abuse.
+
+Off-by-one / off-by-few: Tiny overflows that still reach control data.
+
+Integer-driven overflow: Miscomputed lengths/sizes leading to undersized allocations then overflow.
+
+Wide-char/encoding mismatches: wchar_t vs char length mistakes.
+
+Buffer over-read cousins (e.g., Heartbleed): read past bounds → info leak (not an overflow, but related memory-safety flaw).
+
+How to detect buffer overflow
+
+Compiler warnings: -Wall -Wextra -Wformat -Wstringop-overflow
+
+Static analysis: clang-tidy, Coverity, CodeQL
+
+Fuzzing: AFL++, libFuzzer, Honggfuzz (finds crashing inputs)
+
+Sanitizers: ASan (AddressSanitizer), UBSan, MSan (during tests)
+
+Dynamic tools: Valgrind, sanitizing allocators
+
+Code review & property tests focused on length/size assumptions
+
+Consequences
+
+Remote code execution (RCE)
+
+Privilege escalation
+
+Denial of service (crashes)
+
+Data corruption & integrity loss
+
+Information disclosure (when over-reads/leaks are involved)
+
+Supply-chain risk if in libraries reused by many apps
+
+How to prevent & mitigate
+Write safer code
+
+Prefer memory-safe languages (Rust, Go, Java, Python) where possible.
+
+In C/C++:
+
+Validate lengths; use size-bounded operations (snprintf, strnlen, careful memcpy with checked sizes).
+
+Avoid banned APIs (gets, unchecked scanf("%s"), raw strcpy/strcat); prefer safer wrappers or libraries.
+
+Allocate with explicit capacity and check all return values.
+
+Treat user input as untrusted; enforce protocol/message size limits.
+
+Harden at build time
+
+Enable warnings as errors: -Wall -Wextra -Werror
+
+Stack canaries: -fstack-protector-strong
+
+Fortify: -D_FORTIFY_SOURCE=2 (with optimization)
+
+Position-independent executables: -fPIE -pie
+
+RELRO: -Wl,-z,relro,-z,now
+
+Stack clash protection: -fstack-clash-protection
+
+Use sanitizers in CI: -fsanitize=address,undefined
+
+Harden at runtime/OS
+
+ASLR (address space layout randomization)
+
+NX/DEP / W^X (non-executable data pages)
+
+CFI (control-flow integrity) & CET (on supported CPUs)
+
+Hardened allocators, seccomp, SELinux/AppArmor sandboxing
+
+Run services with least privilege and in containers/jails.
+
+Operational practices
+
+Fuzz critical parsers continuously.
+
+Keep dependencies patched.
+
+Use input size/time limits at the perimeter (WAF, gateways).
+
+Monitor crashes (core dumps, CI fuzzing regressions).
+
+Relating back to your exercise
+
+Your Python + C demo shows how data on the heap changes live. Key takeaways to retain:
+
+A string is just bytes; writing beyond its allocated size corrupts neighbors.
+
+Exact sizes and null-termination matter.
+
+Modern systems add layers of protection, but correct bounds-checked code is the first and best defense.
